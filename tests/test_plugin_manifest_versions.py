@@ -27,6 +27,16 @@ def _manifest_version(path: Path) -> str:
     return version
 
 
+def _project_version(path: Path) -> str:
+    match = re.search(
+        r'^version\s*=\s*["\']([^"\']+)["\']$',
+        path.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    assert match, f"missing static project version in {path}"
+    return match.group(1)
+
+
 def _source_manifest_paths() -> set[Path]:
     generated_roots = {".git", ".venv", "venv", "env", "build", "dist"}
     return {
@@ -64,9 +74,9 @@ def test_package_metadata_uses_the_same_version_contract():
         re.MULTILINE,
     )
 
-    hermes_project = (
-        ROOT / "integrations" / "hermes" / "pyproject.toml"
-    ).read_text(encoding="utf-8")
+    hermes_project = (ROOT / "integrations" / "hermes" / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
     hermes_version = _assignment_version(
         ROOT / "integrations" / "hermes" / "src" / "mnemosyne_hermes" / "__init__.py"
     )
@@ -75,3 +85,14 @@ def test_package_metadata_uses_the_same_version_contract():
         hermes_project,
         re.MULTILINE,
     )
+
+
+def test_standalone_hermes_release_version_is_ready_for_0_6_0():
+    hermes_root = ROOT / "integrations" / "hermes"
+    distribution_version = _project_version(hermes_root / "pyproject.toml")
+    packaged_manifest_version = _manifest_version(
+        hermes_root / "src" / "mnemosyne_hermes" / "plugin.yaml"
+    )
+
+    assert distribution_version == "0.6.0"
+    assert packaged_manifest_version == distribution_version
